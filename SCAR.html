@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+
+<style id="webmakerstyle">
+
+</style>
+</head>
+<body>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Scar edit +</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background-color: #1a1a1a;
+      color: #fff;
+      padding: 10px 20px;
+      font-size: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .editor-container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    textarea {
+      width: 50%;
+      height: 100%;
+      border: none;
+      padding: 10px;
+      font-size: 16px;
+      background-color: #fff;
+      resize: none;
+      outline: none;
+      border-right: 1px solid #ccc;
+    }
+    .output {
+      width: 50%;
+      padding: 15px;
+      overflow-y: auto;
+      background: white;
+    }
+    .command-btns {
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      background-color: #444;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #666;
+    }
+    .command-list {
+      display: none;
+      position: absolute;
+      background-color: white;
+      border: 1px solid #ccc;
+      padding: 10px;
+      top: 50px;
+      left: 20px;
+      z-index: 10;
+      width: 320px;
+    }
+    img, video {
+      max-width: 100%;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>Scar言語エディタ+ v1.0</div>
+    <div class="command-btns">
+      <button onclick="resetOutput()">リセット</button>
+      <button onclick="toggleCommandList()">コマンド一覧</button>
+      <button onclick="downloadOutput()">ダウンロード</button>
+    </div>
+  </header>
+  <div class="editor-container">
+    <textarea id="input" placeholder="Scarコードを入力してください..."></textarea>
+    <div id="output" class="output"></div>
+  </div>
+  <div id="commandList" class="command-list">
+    <strong>コマンド一覧:</strong><br>
+    ・text 〇〇<br>
+    ・text color 〇〇 〇〇<br>
+    ・tag=〇〇<br>
+    ・input tag=〇〇<br>
+    ・es 〇〇<br>
+    ・dot / come<br>
+    ・summon "😀"<br>
+    ・fav type=(textbox / checkbox / insert / come type)<br>
+    ・function 名前 { 処理 }<br>
+    ・photo URL（画像リンク）<br>
+    ・mov URL（動画リンク）<br>
+  </div>
+  <script>
+    const input = document.getElementById("input");
+    const output = document.getElementById("output");
+    const tagData = {};
+    const functions = {};
+
+    function resetOutput() {
+      output.innerHTML = "";
+    }
+
+    function toggleCommandList() {
+      const list = document.getElementById("commandList");
+      list.style.display = list.style.display === "block" ? "none" : "block";
+    }
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        render(input.value);
+      }
+    });
+
+    function render(text) {
+      output.innerHTML = "";
+      const lines = text.split("\n");
+      lines.forEach(line => {
+        if (!line.trim()) return;
+
+        // 関数定義
+        if (line.startsWith("function")) {
+          const name = line.match(/function\s+(\w+)/)[1];
+          const body = line.match(/{(.+)}/)[1];
+          functions[name] = body.trim();
+          return;
+        }
+
+        // 関数呼び出し
+        if (functions[line.trim()]) {
+          render(functions[line.trim()]);
+          return;
+        }
+
+        // 各コマンド解析
+        const words = line.trim().split(" ");
+        switch (words[0]) {
+          case "text":
+            const colorIndex = words.indexOf("color");
+            const span = document.createElement("span");
+            if (colorIndex > -1) {
+              const text = words.slice(1, colorIndex).join(" ");
+              const color = words[colorIndex + 1];
+              span.style.color = color;
+              span.textContent = text;
+            } else {
+              span.textContent = words.slice(1).join(" ");
+            }
+            output.appendChild(span);
+            break;
+
+          case "dot":
+            output.appendChild(document.createElement("br"));
+            break;
+
+          case "come":
+            // 改行なし
+            break;
+
+          case "summon":
+            output.appendChild(document.createTextNode(words.slice(1).join(" ")));
+            break;
+
+          case "fav":
+            const type = line.match(/type=([a-zA-Z() ]+)/)[1].replace(/[()]/g, "").trim();
+            if (type === "textbox") {
+              const inputBox = document.createElement("input");
+              inputBox.type = "text";
+              output.appendChild(inputBox);
+            } else if (type === "checkbox") {
+              const checkbox = document.createElement("input");
+              checkbox.type = "checkbox";
+              output.appendChild(checkbox);
+            } else if (type === "insert") {
+              const div = document.createElement("div");
+              div.textContent = "テストエラーログ";
+              div.style.color = "red";
+              output.appendChild(div);
+            }
+            break;
+
+          case "es":
+            output.appendChild(document.createTextNode(words.slice(1).join(" ")));
+            break;
+
+          case "photo":
+            const img = document.createElement("img");
+            img.src = words[1];
+            output.appendChild(img);
+            break;
+
+          case "mov":
+            const video = document.createElement("video");
+            video.src = words[1];
+            video.controls = true;
+            output.appendChild(video);
+            break;
+
+          default:
+            if (line.includes("tag=")) {
+              const tagName = line.split("tag=")[1];
+              tagData[tagName] = line;
+            } else if (line.includes("input tag=")) {
+              const tagName = line.split("input tag=")[1];
+              if (tagData[tagName]) {
+                output.appendChild(document.createTextNode(tagData[tagName]));
+              }
+            }
+            break;
+        }
+        output.appendChild(document.createElement("br"));
+      });
+    }
+
+    // ダウンロード機能
+    function downloadOutput() {
+      const blob = new Blob(
+        [`<html><body>${output.innerHTML}</body></html>`],
+        { type: "text/html" }
+      );
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "scar_output.html";
+      link.click();
+    }
+  </script>
+</body>
+</html>
+
+
+
+</body>
+</html>
